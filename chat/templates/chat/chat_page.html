@@ -2,51 +2,81 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Чат</title>
+    <style>
+        #chat_container {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        #message_input {
+            width: 300px;
+            padding: 8px;
+        }
+
+        #send_button {
+            padding: 8px 15px;
+        }
+    </style>
 </head>
 <body>
-<h1>Привет, добро пожаловать на мой сайт с чатом! {{ request.user }}</h1>
-<br>
+<h1>Привет, {{ request.user.username }}! Добро пожаловать в чат</h1>
+
 {% if request.user.is_authenticated %}
-    <p><a href="{% url 'logout' %}">Выйти</a> из чата.</p>
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Выйти</button>
+    </form>
 {% endif %}
-<div class="chat__item__container" id="id_chat_item_container" style="font-size: 20px">
-    <br>
-    <input type="text" id="id_message_send_input">
-    <button type="submit" id="is_message_send_button">Отправить</button>
-    <br>
-    <br>
+
+<div id="chat_container">
+    <input type="text" id="message_input" placeholder="Введите сообщение">
+    <button id="send_button">Отправить</button>
 </div>
+
 <script>
-    const chatSocket = new WebSocket("ws://" + window.location.host + "/");
-    chatSocket.onopen = function (e) {
-        console.log("The connection was setup successfully !");
-    };
-    chatSocket.onclose = function (e) {
-        console.log("Something unexpected happened !");
-    };
-    document.querySelector("#id_message_send_input").focus();
-    document.querySelector("#id_message_send_input").onkeyup = function (e) {
-        if (e.keyCode == 13) {
-            document.querySelector("#id_message_send_button").click();
+    document.addEventListener('DOMContentLoaded', function () {
+        const chatSocket = new WebSocket("ws://" + window.location.host + "/");
+        const chatContainer = document.getElementById('chat_container');
+        const messageInput = document.getElementById('message_input');
+        const sendButton = document.getElementById('send_button');
+
+        function sendMessage() {
+            if (messageInput.value.trim() !== '') {
+                chatSocket.send(JSON.stringify({
+                    message: messageInput.value,
+                    username: "{{ request.user.username }}"
+                }));
+                messageInput.value = '';
+            }
         }
-    };
-    document.querySelector("#id_message_send_button").onclick = function (e) {
-        var messageInput = document.querySelector(
-            "#id_message_send_input"
-        ).value;
-        chatSocket.send(JSON.stringify({message: messageInput, username: "{{request.user.username}}"}));
-    };
-    chatSocket.onmessage = function (e) {
-        const data = JSON.parse(e.data);
-        var div = document.createElement("div");
-        div.innerHTML = data.username + " : " + data.message;
-        document.querySelector("#id_message_send_input").value = "";
-        document.querySelector("#id_chat_item_container").appendChild(div);
-    };
+
+        sendButton.addEventListener('click', sendMessage);
+
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        chatSocket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${data.username}: ${data.message}`;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        };
+
+        chatSocket.onerror = function (e) {
+            console.error('WebSocket error:', e);
+        };
+
+        messageInput.focus();
+    });
 </script>
 </body>
 </html>
