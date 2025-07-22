@@ -40,7 +40,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const chatSocket = new WebSocket("ws://" + window.location.host + "/");
+        const chatSocket = new WebSocket("ws://" + window.location.host + "/ws/");
         const chatContainer = document.getElementById('chat_container');
         const messageInput = document.getElementById('message_input');
         const sendButton = document.getElementById('send_button');
